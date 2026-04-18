@@ -1,6 +1,8 @@
 
-#include <render/Shader.hh>
+#include <string>
 #include <glad/glad.h>
+
+#include "Shader.hh"
 
 
 Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {

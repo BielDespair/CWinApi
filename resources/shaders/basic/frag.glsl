@@ -12,5 +12,5 @@ void main() {
     //int indiceCor = gl_PrimitiveID % 6;
     
     
-    FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+    FragColor = vec4(color, 1.0);
 }

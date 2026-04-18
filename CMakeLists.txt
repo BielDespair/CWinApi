@@ -6,26 +6,29 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(Engine WIN32 src/main.cpp
-    src/math/vector.cpp
+    src/math/Vector.cpp
+    src/math/mat4.cpp
     src/render/renderer.cpp
-    src/game.cpp
+    src/game/game.cpp
     src/render/Shader.cpp
-    src/render/VBO.cpp
+    src/render/buffers/VBO.cpp
+    src/render/buffers/EBO.cpp
+    src/render/buffers/VAO.cpp
     src/graphics/triangulation.cpp
-    src/render/EBO.cpp
-    src/render/VAO.cpp
+    src/graphics/Camera.cpp
+    src/graphics/shapes/primitives.cc
+    src/input/input.cpp
+    src/game/player/Player.cpp
     )
-
-add_executable(Testing src/testing.cpp src/graphics/triangulation.cpp src/math/vector.cpp)
-
 
 add_library(glad STATIC external/glad/src/glad.c)
 target_include_directories(glad PUBLIC external/glad/include)
 
 target_link_libraries(Engine PRIVATE glad opengl32)
 
-target_include_directories(Testing PRIVATE include)
-target_include_directories(Engine PRIVATE include)
+target_include_directories(Engine PRIVATE external)
+target_include_directories(Engine PRIVATE src)
+
 
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

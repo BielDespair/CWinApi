@@ -1,5 +1,5 @@
 #include <graphics/triangulation.hh>
-#include <math/vector.hh>
+#include <math/Vector.hh>
 #include <vector>
 
 Mesh2D triangulate2D(Vec2* vertices, size_t size)
