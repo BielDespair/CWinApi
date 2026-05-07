@@ -22,6 +22,10 @@ void Input::OnMouseMove(int x, int y) {
     mouseY = y;
 }
 
+void Input::OnMouseScroll(short delta) {
+    wheelDelta += delta;
+}
+
 bool Input::IsActionDown(Action a) const
 {
     if (!currentMap)
@@ -63,6 +67,7 @@ bool Input::IsActionPressed(Action a) const
 void Input::EndFrame() {
     deltaX = 0;
     deltaY = 0;
+    wheelDelta = 0;
     memcpy(prevKeys, keys, sizeof(keys));
 }
 
@@ -70,6 +75,8 @@ void Input::SetupDefaultBindings()
 {
     //Debug 
     bindings[InputContext::Gameplay][Action::Debug]  = { VK_ESCAPE };
+    bindings[InputContext::Gameplay][Action::ZoomIn]  = { VK_OEM_PLUS };
+    bindings[InputContext::Gameplay][Action::ZoomOut] = { VK_OEM_MINUS };
     bindings[InputContext::Menu][Action::Debug]  = { VK_ESCAPE };
 
 
@@ -84,6 +91,12 @@ void Input::SetupDefaultBindings()
 
 
     bindings[InputContext::Gameplay][Action::MoveCamera]    = { VK_MBUTTON };
+
+
+    bindings[InputContext::Gameplay][Action::CameraMoveForward]    = { 'W' };
+    bindings[InputContext::Gameplay][Action::CameraMoveBackwards]    = { 'S' };
+    bindings[InputContext::Gameplay][Action::CameraMoveLeft]    = { 'A' };
+    bindings[InputContext::Gameplay][Action::CameraMoveRight]    = { 'D' };
 
 
 

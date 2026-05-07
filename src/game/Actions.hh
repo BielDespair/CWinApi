@@ -22,10 +22,16 @@ enum class Action
     MoveDown,
 
     // Camera
-    LookLeft,
-    LookRight,
+    CameraMoveForward,
+    CameraMoveBackwards,
+    CameraMoveLeft,
+    CameraMoveRight,
+
     LookUp,
     LookDown,
+    LookLeft,
+    LookRight,
+    
     ZoomIn,
     ZoomOut,
 

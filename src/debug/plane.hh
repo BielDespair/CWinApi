@@ -3,4 +3,6 @@
 
 
 
-std::vector<float> buildPlane();
+struct Plane {
+    
+}

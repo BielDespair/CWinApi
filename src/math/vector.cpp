@@ -22,6 +22,7 @@ Vec3 Vec3::operator/(float alpha) const {
 
     return { x * inv, y * inv, z * inv };
 }
+
 Vec3 Vec3::normalize() const {
     float length = this->length();
 

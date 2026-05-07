@@ -11,6 +11,9 @@
 
 
 
-Mesh buildPyramid( float b, float h, Vec3 c, Vec3 d);
+Mesh buildPyramid(float b, float h, Vec3 c, Vec3 d, Vec3 color);
 
+
+
+Mesh buildCylinder(float r, float h, int segments, Vec3 c, Vec3 d, Vec3 color);
 

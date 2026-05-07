@@ -4,7 +4,8 @@
 #include <glad/glad.h>
 #include <cstdint>
 
-#include <graphics/shapes/primitives.hh>
+#include "graphics/shapes/primitives.hh"
+#include "render/Model.h"
 #include "math/Vector.hh"
 
 GLfloat axis[] = {
@@ -22,13 +23,13 @@ GLfloat axis[] = {
     0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 1.0f
 };
 
+Model getArrowsModel() {
 
-GLfloat arrows[90];
-GLuint arrowsIndices[54];
+    const int VERTICES_COUNT = 5;
+    const int INDEX_COUNT = 18;
 
-void getArrowsModel(GLfloat vertices[90], GLuint indices[54]) {
     const float B = 0.1f;
-    const float H = 0.5f;
+    const float H = 0.1f;
 
     Vec3 axisList[3] = {
         {1, 0, 0},
@@ -36,38 +37,33 @@ void getArrowsModel(GLfloat vertices[90], GLuint indices[54]) {
         {0, 0, 1}
     };
 
-    int vertexOffset = 0;
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
+    
+    vertices.resize(5 * 3);
+    indices.resize(18 * 3); // se fixo
+    
 
-    for (int i = 0; i < 3; i++)
+    for (size_t i = 0; i < 3; i++)
     {
+        
         Vec3 dir = axisList[i];
+        Mesh axisMesh = buildPyramid(B, H, dir, dir, dir);
 
-        float tmpV[15];
-        uint32_t tmpI[18];
-
-        buildPyramid(dir, B, H, dir, tmpV, tmpI);
-
-        Vec3 color = dir; // RGB por eixo
-
-        for (int v = 0; v < 5; v++)
+        for (size_t j = 0; j < VERTICES_COUNT; j++)
         {
-            int src = v * 3;
-            int dst = vertexOffset * 6;
-
-            vertices[dst + 0] = tmpV[src + 0];
-            vertices[dst + 1] = tmpV[src + 1];
-            vertices[dst + 2] = tmpV[src + 2];
-
-            vertices[dst + 3] = color.x;
-            vertices[dst + 4] = color.y;
-            vertices[dst + 5] = color.z;
-
-            vertexOffset++;
+            vertices[j + (i * VERTICES_COUNT)] = axisMesh.vertices[j];
         }
 
-        for (int k = 0; k < 18; k++)
+        uint32_t vertexOffset = i * VERTICES_COUNT;
+        for (size_t k = 0; k < INDEX_COUNT; k++)
         {
-            indices[i * 18 + k] = tmpI[k] + (i * 5);
+            
+            indices[k + (i * INDEX_COUNT)] = axisMesh.indices[k] + vertexOffset;
         }
     }
+
+    Mesh mesh(vertices, indices);
+    Model model(mesh);
+    return model;
 }

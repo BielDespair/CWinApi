@@ -26,11 +26,13 @@ struct Input
 
     int mouseX, mouseY;
     int deltaX, deltaY;
+    int wheelDelta;
 
     void OnKeyDown(int key);
     void OnKeyUp(int key);
 
     void OnMouseMove(int x, int y);
+    void OnMouseScroll(short delta);
 
     bool IsActionDown(Action a) const;
     bool IsActionPressed(Action a) const;

@@ -17,6 +17,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <Windows.h>
 
+
 #include <math/Vector.hh>
 #include <render/renderer.hh>
 #include <game/game.hh>
@@ -31,56 +32,30 @@
 
 #include "game/player/Player.hh"
 #include "debug/axis.hh"
+#include <stddef.h>
+#include "graphics/Camera.hh"
+#include <iostream>
+#include "render/Model.h"
+#include "graphics/Colors.hh"
 
-GLfloat vertices[] = {
-    // pos               // color
-     0.0f,  0.9f, 0.0f,   1.0f, 0.0f, 0.0f,
-     0.35f, 1.0f, 0.0f,   1.0f, 0.2f, 0.0f,
-     0.7f,  0.7f, 0.0f,   1.0f, 0.4f, 0.0f,
-     0.6f,  0.2f, 0.0f,   1.0f, 0.6f, 0.0f,
-     0.3f, -0.2f, 0.0f,   0.8f, 0.8f, 0.0f,
-     0.0f, -0.8f, 0.0f,   0.0f, 1.0f, 0.0f,
-    -0.3f, -0.2f, 0.0f,   0.0f, 0.8f, 0.2f,
-    -0.6f, 0.2f, 0.0f,    0.0f, 0.6f, 0.6f,
-    -0.7f, 0.7f, 0.0f,    0.0f, 0.4f, 1.0f,
-    -0.35f, 1.0f, 0.0f,   0.5f, 0.2f, 1.0f
-};
-
-GLuint indices[] = {
-    0, 1, 2,
-    0, 2, 3,
-    9, 0, 3,
-    9, 3, 4,
-    9, 4, 5,
-    9, 5, 6,
-    9, 6, 7,
-    7, 8, 9
-};
+typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int);
+PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = nullptr;
 
 
-
-
-
-float angleX = 0.0f;
-bool keys[256] = {0};
-
+const Color CLEAR_COLOR = Colors::DarkGray;
 Input input;
 Game game(input);
+Camera camera(input);
+Player player;
 
-void* GetAnyGLFuncAddress(const char *name)
-{
-    void *p = (void *)wglGetProcAddress(name);
+const glm::mat4 identity(1.0f);
 
-    if(p == 0 || (p == (void*)0x1) || (p == (void*)0x2) || (p == (void*)0x3) || (p == (void*)-1))
-    {
-        HMODULE module = LoadLibraryA("opengl32.dll");
-        p = (void *)GetProcAddress(module, name);
-    }
-    
-    return p;
+void resizeWindow(HWND& hwnd) {
+    RECT r;
+    GetClientRect(hwnd, &r);
+    glViewport(0, 0, r.right, r.bottom);
+    camera.Resize(r.right, r.bottom);
 }
-
-
 
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -94,14 +69,16 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
     case WM_SIZE:
         wprintf(L"WM_SIZE\n");
-        RECT r;
-        GetClientRect(hwnd, &r);
-        glViewport(0, 0, r.right, r.bottom);
+        resizeWindow(hwnd);
         break;
 
     case WM_MOUSEMOVE:
         input.OnMouseMove(LOWORD(lParam), HIWORD(lParam));
-    break;
+        break;
+
+    case WM_MOUSEWHEEL:
+        input.OnMouseScroll(GET_WHEEL_DELTA_WPARAM(wParam));
+        break;
     case WM_DESTROY:
         PostQuitMessage(EXIT_SUCCESS);
         return EXIT_SUCCESS;
@@ -141,6 +118,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 {
+
 
     
     if (!AllocConsole())
@@ -201,6 +179,8 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     SetPixelFormat(hdc, pf, &pfd);
     HGLRC glrc = wglCreateContext(hdc);
     wglMakeCurrent(hdc, glrc);
+    wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)wglGetProcAddress("wglSwapIntervalEXT");
+    wglSwapIntervalEXT(0);
     gladLoadGL();
 
 
@@ -215,17 +195,22 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     RECT r;
     GetClientRect(hwnd, &r);
     glViewport(0, 0, r.right, r.bottom);
+    camera.Resize(r.right, r.bottom);
     
     Shader shaderProgram = Shader::Shader("basic/basic.glsl", "basic/frag.glsl");
+    Shader planeShader = Shader::Shader("debug/plane.glsl", "debug/planeFrag.glsl");
     
-    VAO VAO1;
-    
-    VAO1.Bind();
-    VBO VBO1(vertices, sizeof(vertices));
-    EBO EBO1(indices, sizeof(indices));
+    Model myCube("resources/models/Untitled.obj");
+    Model arrowsModel = getArrowsModel();
 
-    VAO1.LinkAttrib(VBO1, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
-    VAO1.LinkAttrib(VBO1, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    Mesh cyl = buildCylinder(
+    0.5f,              // raio
+    2.0f,              // altura
+    30,                // segmentos
+    Vec3{0,0,0},       // centro
+    Vec3{0,1,0},       // direção (eixo Y)
+    Vec3{0.2f,0.7f,1}  // cor
+    );
 
     // Axis
     VAO axisVAO;
@@ -236,35 +221,23 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     axisVAO.LinkAttrib(axisVBO, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
     axisVAO.LinkAttrib(axisVBO, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
     
-    VAO arrowsVAO;
-    getArrowsModel(arrows, arrowsIndices);
-    arrowsVAO.Bind();
-    VBO arrowsVBO(arrows, sizeof(arrows));
-    EBO arrowsEBO(arrowsIndices, sizeof(arrowsIndices));
-    VAO1.LinkAttrib(arrowsVBO, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
-    VAO1.LinkAttrib(arrowsVBO, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
 
 
 
-    Shader planeShader = Shader::Shader("debug/plane.glsl", "basic/frag.glsl");
-    VAO planeVAO;
-    planeVAO.Bind();
 
-    // Unbind do estado global (para evitar conflitos)
-    VAO1.Unbind();
-    VBO1.Unbind();
-    EBO1.Unbind();
 
-    GLuint projectionID = glGetUniformLocation(shaderProgram.ID, "projection");
-    GLuint viewID = glGetUniformLocation(shaderProgram.ID, "view");
+
+    GLuint viewProjID = glGetUniformLocation(shaderProgram.ID, "viewProj");
     GLuint modelID = glGetUniformLocation(shaderProgram.ID, "model");
 
+    // Plane
     GLuint planeVP_ID = glGetUniformLocation(planeShader.ID, "gVP");
+    GLuint planeCameraID = glGetUniformLocation(planeShader.ID, "gCameraWorldPos");
 
     
-    Player player;
+
     
-    float rotSpeed = 10.1f; // rad/s
+    float rotSpeed = 0.005f; // rad/s
     float ax = 0.0f;
     float ay = 0.0f;
     float az = 0.0f;
@@ -279,18 +252,40 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     int width = r.right;
     int height = r.bottom;
 
+    float scaleValue = 1.0f;
+
+
+    
 
     LARGE_INTEGER freq;
     QueryPerformanceFrequency(&freq);
 
     LARGE_INTEGER last;
     QueryPerformanceCounter(&last);
+
+    int frames = 0;
+    float acc = 0.0f;
+    int fps = 0;
+    
     while (running)
     {
         LARGE_INTEGER now;
         QueryPerformanceCounter(&now);
         float dt = (float)(now.QuadPart - last.QuadPart) / (float)freq.QuadPart;
         last = now;
+        acc += dt;
+        frames++;
+
+        if (acc >= 1.0f) {
+            fps = frames;
+            frames = 0;
+            acc = 0.0f;
+            std::string title = "FPS: " + std::to_string(fps);
+            SetWindowTextA(hwnd, title.c_str());
+        }
+
+
+        
 
 
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
@@ -307,19 +302,28 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         if (!running) break;
 
 
-        if (input.IsActionDown(Action::MoveCamera)) {
-            ax += input.deltaY * rotSpeed * dt * -1;
-            ay += input.deltaX * rotSpeed * dt * -1;
+        camera.Update(dt);
+        
+        if (!input.IsActionDown(Action::MoveCamera)) {
+            ax += input.deltaY * rotSpeed * -1;
+            ay += input.deltaX * rotSpeed * -1;
+            
         }
-        if (input.IsActionDown(Action::MoveForward)) tz -= rotSpeed * dt;
-        if (input.IsActionDown(Action::MoveBackward))tz += rotSpeed * dt;
-        if (input.IsActionDown(Action::MoveLeft))  tx += rotSpeed * dt;
-        if (input.IsActionDown(Action::MoveRight)) tx -= rotSpeed * dt;
 
         if (input.IsActionPressed(Action::Debug)) {
             debug = !debug;
             ax = ay = az = tx = ty = tz = player.x = player.y = player.z = 0.0f;
+            camera.Reset();
         }
+
+        if (input.IsActionDown(Action::ZoomIn)) {
+            scaleValue += dt;
+        }
+        if (input.IsActionDown(Action::ZoomOut)) {
+            scaleValue -= dt;
+        }
+
+        
 
         input.EndFrame();
         
@@ -328,7 +332,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
         glm::vec3 position(tx, ty, tz);
         glm::vec3 rotation(ax, ay, az);
-        glm::vec3 scale(1.0f);
+        glm::vec3 scale(scaleValue);
 
         glm::mat4 model(1.0f);
 
@@ -339,11 +343,6 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         model = glm::rotate(model, rotation.z, glm::vec3(0,0,1));
         model = glm::scale(model, scale);
 
-        glm::mat4 view = glm::lookAt(
-            glm::vec3(0.0f, 10.0f, 0.0f), // camera pos
-            glm::vec3(0.0f, 0.0f, 0.0f), // target
-            glm::vec3(0.0f, 0.0f, 1.0f)  // up
-        );
 
         glm::mat4 projection = glm::perspective(
             glm::radians(60.0f),
@@ -351,40 +350,49 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
             0.1f,
             100.0f
         );
-
-        glm::mat4 gVP = projection * view;
-        gVP = glm::mat4(1.0f);
         
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        
+        glClearColor(CLEAR_COLOR.r, CLEAR_COLOR.g, CLEAR_COLOR.b, CLEAR_COLOR.a);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
-        glPolygonMode(GL_FRONT_AND_BACK, debug ? GL_LINE : GL_FILL);
         glEnable(GL_DEPTH_TEST);
+        
+        
+        // Plane
+        
+        planeShader.Activate();
+        planeShader.SetVec3(planeCameraID, camera.position);
+        planeShader.SetMat4(planeVP_ID, camera.matrix);
 
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        glEnable(GL_DEPTH_TEST);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
+
+        // OBJ
+        glPolygonMode(GL_FRONT_AND_BACK, debug ? GL_LINE : GL_FILL);
         shaderProgram.Activate();
-        VAO1.Bind();
-        glUniformMatrix4fv(modelID, 1, GL_FALSE, glm::value_ptr(model));
-        glDrawElements(GL_TRIANGLES, sizeof(indices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
+        shaderProgram.SetMat4(modelID, model);
+        shaderProgram.SetMat4(viewProjID, camera.matrix);
+
+        //cyl.Draw(shaderProgram, camera);
+        myCube.Draw(shaderProgram, camera);
         
         //Axis
         axisVAO.Bind();
-        glUniformMatrix4fv(modelID, 1, GL_FALSE, glm::value_ptr(model));
+        glUniformMatrix4fv(viewProjID, 1, GL_FALSE, glm::value_ptr(camera.matrix));
+        glUniformMatrix4fv(modelID, 1, GL_FALSE, glm::value_ptr(identity));
         glDrawArrays(GL_LINES, 0, 6);
 
         // Axis Arrows
-        arrowsVAO.Bind();
-        glUniformMatrix4fv(modelID, 1, GL_FALSE, glm::value_ptr(model));
-        glDrawElements(GL_TRIANGLES, sizeof(arrowsIndices)/sizeof(GLuint), GL_UNSIGNED_INT, 0);
+        shaderProgram.SetMat4(viewProjID, camera.matrix);
+        shaderProgram.SetMat4(modelID, identity);
+        arrowsModel.Draw(shaderProgram, camera);
+        
         
 
-        // Plane
-        planeShader.Activate();
-        glPolygonMode(GL_FRONT_AND_BACK, debug ? GL_LINE : GL_FILL);
-        planeVAO.Bind();
-        glUniformMatrix4fv(planeVP_ID, 1, GL_FALSE, glm::value_ptr(gVP));
-        glEnable(GL_DEPTH_TEST);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
+
 
 
         SwapBuffers(hdc);
@@ -400,10 +408,8 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
 
     // Liberação de recursos
-    VAO1.Delete();
-    VBO1.Delete();
+
     axisVBO.Delete();
-    EBO1.Delete();
     shaderProgram.Delete();
     
     return EXIT_SUCCESS;

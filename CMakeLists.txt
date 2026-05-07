@@ -16,9 +16,11 @@ add_executable(Engine WIN32 src/main.cpp
     src/render/buffers/VAO.cpp
     src/graphics/triangulation.cpp
     src/graphics/Camera.cpp
-    src/graphics/shapes/primitives.cc
+    src/graphics/shapes/primitives.cpp
+    src/graphics/Mesh.cpp
     src/input/input.cpp
     src/game/player/Player.cpp
+    src/render/Model.cpp
     )
 
 add_library(glad STATIC external/glad/src/glad.c)
@@ -31,8 +33,10 @@ target_include_directories(Engine PRIVATE src)
 
 
 
+
+
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_CURRENT_SOURCE_DIR}/resources/shaders"
-    "$<TARGET_FILE_DIR:${PROJECT_NAME}>/resources/shaders"
+    ${CMAKE_SOURCE_DIR}/resources
+    $<TARGET_FILE_DIR:${PROJECT_NAME}>/resources
 )

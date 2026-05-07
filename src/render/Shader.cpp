@@ -1,8 +1,7 @@
 
-#include <string>
-#include <glad/glad.h>
 
 #include "Shader.hh"
+#include <glm/gtc/type_ptr.hpp>
 
 
 Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {
@@ -46,6 +45,18 @@ Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {
 
 void Shader::Activate() {
     glUseProgram(this->ID);
+}
+
+void Shader::SetMat4(GLuint id, const glm::mat4 &m) {
+    glUniformMatrix4fv(id, 1, GL_FALSE, glm::value_ptr(m));
+}
+
+void Shader::SetVec3(GLuint id, const Vec3 &v) {
+    glUniform3f(id, v.x, v.y, v.z);
+}
+
+void Shader::SetInt(GLuint id, int v) {
+
 }
 
 void Shader::Delete() {
