@@ -5,7 +5,7 @@
 #include <cstdint>
 
 #include "graphics/shapes/primitives.hh"
-#include "render/Model.h"
+#include "graphics/Model.hh"
 #include "math/Vector.hh"
 
 GLfloat axis[] = {
@@ -25,9 +25,6 @@ GLfloat axis[] = {
 
 Model getArrowsModel() {
 
-    const int VERTICES_COUNT = 5;
-    const int INDEX_COUNT = 18;
-
     const float B = 0.1f;
     const float H = 0.1f;
 
@@ -37,33 +34,16 @@ Model getArrowsModel() {
         {0, 0, 1}
     };
 
-    std::vector<Vertex> vertices;
-    std::vector<uint32_t> indices;
-    
-    vertices.resize(5 * 3);
-    indices.resize(18 * 3); // se fixo
-    
-
+    std::vector<Mesh> meshes;
+        
     for (size_t i = 0; i < 3; i++)
     {
         
         Vec3 dir = axisList[i];
         Mesh axisMesh = buildPyramid(B, H, dir, dir, dir);
-
-        for (size_t j = 0; j < VERTICES_COUNT; j++)
-        {
-            vertices[j + (i * VERTICES_COUNT)] = axisMesh.vertices[j];
-        }
-
-        uint32_t vertexOffset = i * VERTICES_COUNT;
-        for (size_t k = 0; k < INDEX_COUNT; k++)
-        {
-            
-            indices[k + (i * INDEX_COUNT)] = axisMesh.indices[k] + vertexOffset;
-        }
+        meshes.push_back(axisMesh);
     }
 
-    Mesh mesh(vertices, indices);
-    Model model(mesh);
+    Model model(meshes);
     return model;
 }

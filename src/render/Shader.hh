@@ -10,17 +10,26 @@
 #include "math/Vector.hh"
 
 class Shader {
-public:
-    GLuint ID;
-    Shader(const std::string& vertexPath, const std::string& fragmentPath);
+    public:
+        GLuint ID;
+        GLuint useTextureID = 0;
 
+        bool hasTexture = false;
+        bool texturesEnabled = false;
 
-    void Delete();
-    void Activate();
+        Shader(const std::string& vertexPath, const std::string& fragmentPath, bool hasTexture = false);
 
-    void SetMat4(GLuint id, const glm::mat4& m);
-    void SetVec3(GLuint id, const Vec3& v);
-    void SetInt(GLuint id, int v);
+        void Delete();
+        void Activate();
+
+        void SetMat4(GLuint id, const glm::mat4& m);
+        void SetVec3(GLuint id, const Vec3& v);
+        void SetInt(GLuint id, int v);
+        void SetBool(GLuint id, bool v);
+
+        void texUnit(const char* uniform, GLuint unit);
+        void EnableTextures();
+        void DisableTextures();
 };
 
 

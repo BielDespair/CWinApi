@@ -41,7 +41,7 @@ class Camera {
         const Vec3 WORLD_UP = Vec3 { 0.0f, 1.0f, 0.0f };
         const float CNEAR = 0.05f; 
         const float CFAR = 100.0f;
-        const float SPEED = 0.5f;
+        const float SPEED = 1.8f;
         const float SENSIBILITY = 0.05f;
         const float FOV = glm::pi<float>()/3; // 60°
         const float PITCH_LIMIT = glm::radians(89.0f);

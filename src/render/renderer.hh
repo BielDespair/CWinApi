@@ -1,22 +1,20 @@
-// render/renderer.hh
 #pragma once
-#include <Windows.h>
-
-#include <math/Vector.hh>
 
 
+#include "graphics/Mesh.hh"
+#include "graphics/Texture.hh"
 
 
 
 
 class Renderer {
-public:
-    void init(HWND hwnd);
-    void begin();
-    void draw_rect(Vec2 pos, Vec2 size);
-    void end();
+    public:
+        void Submit(Mesh* mesh, Texture* material);
+        void Flush(Shader& shader, Camera& camera);
 
-private:
-    HWND hwnd;
-    HDC hdc;
+
+
+
+    private:
+        std::unordered_map<Texture*, std::vector<Mesh*>> batches;
 };

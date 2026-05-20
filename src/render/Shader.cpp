@@ -4,7 +4,8 @@
 #include <glm/gtc/type_ptr.hpp>
 
 
-Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {
+Shader::Shader(const std::string &vertexPath, const std::string &fragmentPath, bool hasTexture)
+{
     std::string vertexSrc = loadShaderFile(vertexPath);
     std::string fragmentSrc = loadShaderFile(fragmentPath);
 
@@ -40,8 +41,17 @@ Shader::Shader(const std::string& vertexPath, const std::string& fragmentPath) {
     glDeleteShader(fragmentShader);
 
     this->ID = shaderProgram;
-}
 
+
+    if (hasTexture) {
+        this->Activate();
+        this->useTextureID = glGetUniformLocation(ID, "useTexture");
+        glUniform1i(useTextureID, GL_FALSE);
+    }
+    else {
+        this->useTextureID = 0;
+    }
+}
 
 void Shader::Activate() {
     glUseProgram(this->ID);
@@ -59,12 +69,35 @@ void Shader::SetInt(GLuint id, int v) {
 
 }
 
+void Shader::SetBool(GLuint id, bool v) {
+    glUniform1i(id, (int)v);
+}
+
+void Shader::texUnit(const char* uniform, GLuint unit) {
+    GLuint texUni = glGetUniformLocation(this->ID, uniform);
+    this->Activate();
+    glUniform1i(texUni, unit);
+}
+void Shader::EnableTextures() {
+    // Textures already enabled
+    if (texturesEnabled) return;
+    glUniform1i(useTextureID, GL_TRUE);
+    texturesEnabled = true;
+}
+
+void Shader::DisableTextures() {
+    // Textures already disabled
+    if (!texturesEnabled) return;
+    glUniform1i(useTextureID, GL_FALSE);
+    texturesEnabled = false;
+}
+
 void Shader::Delete() {
     glDeleteProgram(ID);
 }
 
 std::string loadShaderFile(const std::string& path) {
-    std::string fullPath = "resources/shaders/" + path;
+    std::string fullPath = "assets/shaders/" + path;
     std::ifstream file(fullPath);
     
     if (!file.is_open()) {

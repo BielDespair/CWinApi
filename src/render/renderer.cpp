@@ -1,24 +1,19 @@
+#include "Renderer.hh"
 
-#include "renderer.hh"
 
-void Renderer::init(HWND h) {
-    hwnd = h;
+
+void Renderer::Submit(Mesh* mesh, Texture* texture) {
+    batches[texture].push_back(mesh);
 }
 
-void Renderer::begin() {
-    hdc = GetDC(hwnd);
-}
 
-void Renderer::draw_rect(Vec2 pos, Vec2 size) {
-    Rectangle(
-        hdc,
-        (int)pos.x,
-        (int)pos.y,
-        (int)(pos.x + size.x),
-        (int)(pos.y + size.y)
-    );
-}
+void Renderer::Flush(Shader& shader, Camera& camera) {
+    for (auto& [texture, meshes] : batches) {
 
-void Renderer::end() {
-    ReleaseDC(hwnd, hdc);
+        texture->Bind(); // shader + textures
+
+        for (auto* mesh : meshes) {
+            mesh->Draw(shader, camera);
+        }
+    }
 }

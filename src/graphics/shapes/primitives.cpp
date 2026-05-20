@@ -99,3 +99,36 @@ Mesh buildCylinder(float r, float h, int segments, Vec3 c, Vec3 d, Vec3 color) {
 
     return Mesh(vertices, indices);
 }
+
+Mesh buildPlane(float w, float h, Vec3 c, Vec3 orientation)
+{
+    Vec3 dir = orientation.normalize();
+
+    Vec3 aux = fabs(dir.y) < 0.99f ? Vec3{0, 1, 0} : Vec3{1, 0, 0};
+
+    Vec3 right = dir.cross(aux).normalize();
+    Vec3 forward = right.cross(dir).normalize();
+
+    float hw = w * 0.5f;
+    float hh = h * 0.5f;
+
+    std::vector<Vertex> vertices = {
+        { c - right * hw - forward * hh, {1.0f, 1.0f, 1.0f}, dir, {0.0f, 0.0f} },
+        { c + right * hw - forward * hh, {1.0f, 1.0f, 1.0f}, dir, {1.0f, 0.0f} },
+        { c + right * hw + forward * hh, {1.0f, 1.0f, 1.0f}, dir, {1.0f, 1.0f} },
+        { c - right * hw + forward * hh, {1.0f, 1.0f, 1.0f}, dir, {0.0f, 1.0f} }
+    };
+
+    std::vector<uint32_t> indices = {
+        0, 1, 2,
+        0, 2, 3
+    };
+
+    return Mesh(vertices, indices);
+}
+
+Mesh buildCube(float size, Vec3 c)
+{
+    
+    return Mesh({}, {});
+}

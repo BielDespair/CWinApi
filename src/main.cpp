@@ -9,6 +9,9 @@
 #include <stdio.h>
 #include <vector>
 #include <algorithm>
+#include <iostream>
+#include <stddef.h>
+
 
 #include <glad/glad.h>
 #include <glm/ext/vector_float3.hpp>
@@ -17,36 +20,51 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <Windows.h>
 
-
-#include <math/Vector.hh>
-#include <render/renderer.hh>
-#include <game/game.hh>
-#include <input/input.hh>
-#include <graphics/triangulation.hh>
-#include <render/Shader.hh>
-
-#include <render/buffers/VAO.hh>
-#include <render/buffers/VBO.hh>
-#include <render/buffers/EBO.hh>
-#include <math/mat4.hh>
-
+#include "game/game.hh"
 #include "game/player/Player.hh"
+
 #include "debug/axis.hh"
-#include <stddef.h>
-#include "graphics/Camera.hh"
-#include <iostream>
-#include "render/Model.h"
+
+#include "input/input.hh"
+
+
+#include "math/Vector.hh"
+#include "math/mat4.hh"
+#include "math/transform.hh"
+
+
+
+#include "graphics/Model.hh"
+#include "graphics/Texture.hh"
 #include "graphics/Colors.hh"
+
+#include "render/renderer.hh"
+#include "render/Shader.hh"
+#include "render/buffers/VAO.hh"
+#include "render/buffers/VBO.hh"
+#include "render/buffers/EBO.hh"
+
+#include "resources/ResourceManager.hh"
+
+
+#include "controller/EntityController.hh"
+
+#include "scene/Scene.hh"
+#include "scene/Camera.hh"
 
 typedef BOOL (WINAPI *PFNWGLSWAPINTERVALEXTPROC)(int);
 PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = nullptr;
 
 
 const Color CLEAR_COLOR = Colors::DarkGray;
+
+Renderer renderer;
 Input input;
-Game game(input);
 Camera camera(input);
 Player player;
+Game game(input);
+
+Scene scene(camera, input, renderer);
 
 const glm::mat4 identity(1.0f);
 
@@ -111,16 +129,12 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         break;
     }
     
-    
-
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
 INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine, INT nCmdShow)
 {
 
-
-    
     if (!AllocConsole())
     {
         return EXIT_FAILURE;
@@ -184,11 +198,6 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     gladLoadGL();
 
 
-
-
-    //Renderer renderer = Renderer();
-    //renderer.init(hwnd);
-
     ShowWindow(hwnd, nCmdShow);
     MSG msg = {0};
 
@@ -197,12 +206,28 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     glViewport(0, 0, r.right, r.bottom);
     camera.Resize(r.right, r.bottom);
     
-    Shader shaderProgram = Shader::Shader("basic/basic.glsl", "basic/frag.glsl");
-    Shader planeShader = Shader::Shader("debug/plane.glsl", "debug/planeFrag.glsl");
+
+
+    ResourceManager::Init();
+
+    Shader* shaderProgram = ResourceManager::LoadShader("basic/basic.glsl", "basic/frag.glsl", true);
+    shaderProgram->texUnit("tex0", GL_TEXTURE0);
     
-    Model myCube("resources/models/Untitled.obj");
+    Model* myCube = ResourceManager::LoadModel("assets/models/gobul.obj");
+
+    
+    
+    
+    Shader planeShader = Shader::Shader("debug/plane.glsl", "debug/planeFrag.glsl");
+
+
+    Texture* gostosaTexture = ResourceManager::LoadTexture("assets/textures/gostosa.png", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGBA, GL_UNSIGNED_BYTE);
+    Texture* myTexture = ResourceManager::LoadTexture("assets/textures/test.jpg", GL_TEXTURE_2D, GL_TEXTURE0, GL_RGB, GL_UNSIGNED_BYTE);
+
+    Entity gostosa({}, myCube);
     Model arrowsModel = getArrowsModel();
 
+    Mesh plane = buildPlane(1.0f, 1.0f, Vec3{0, 0, 0}, Vec3{0, 0, 1});
     Mesh cyl = buildCylinder(
     0.5f,              // raio
     2.0f,              // altura
@@ -212,6 +237,7 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     Vec3{0.2f,0.7f,1}  // cor
     );
 
+
     // Axis
     VAO axisVAO;
     axisVAO.Bind();
@@ -220,15 +246,9 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
     axisVAO.LinkAttrib(axisVBO, 0, 3, GL_FLOAT, 6 * sizeof(float), (void*)0);
     axisVAO.LinkAttrib(axisVBO, 1, 3, GL_FLOAT, 6 * sizeof(float), (void*)(3 * sizeof(float)));
-    
 
-
-
-
-
-
-    GLuint viewProjID = glGetUniformLocation(shaderProgram.ID, "viewProj");
-    GLuint modelID = glGetUniformLocation(shaderProgram.ID, "model");
+    GLuint viewProjID = glGetUniformLocation(shaderProgram->ID, "viewProj");
+    GLuint modelID = glGetUniformLocation(shaderProgram->ID, "model");
 
     // Plane
     GLuint planeVP_ID = glGetUniformLocation(planeShader.ID, "gVP");
@@ -236,26 +256,11 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
 
     
 
-    
-    float rotSpeed = 0.005f; // rad/s
-    float ax = 0.0f;
-    float ay = 0.0f;
-    float az = 0.0f;
-
-    float tx = 0.0f;
-    float ty = 0.0f;
-    float tz = 0.0f;
-
+    scene.selected = &gostosa;
     bool running = true;
-    bool debug = false;
-
     int width = r.right;
     int height = r.bottom;
 
-    float scaleValue = 1.0f;
-
-
-    
 
     LARGE_INTEGER freq;
     QueryPerformanceFrequency(&freq);
@@ -266,6 +271,9 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     int frames = 0;
     float acc = 0.0f;
     int fps = 0;
+    
+
+    glEnable(GL_DEPTH_TEST);
     
     while (running)
     {
@@ -284,10 +292,6 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
             SetWindowTextA(hwnd, title.c_str());
         }
 
-
-        
-
-
         while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
         {
             if (msg.message == WM_QUIT)
@@ -301,97 +305,62 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         }
         if (!running) break;
 
-
-        camera.Update(dt);
-        
-        if (!input.IsActionDown(Action::MoveCamera)) {
-            ax += input.deltaY * rotSpeed * -1;
-            ay += input.deltaX * rotSpeed * -1;
-            
-        }
-
-        if (input.IsActionPressed(Action::Debug)) {
-            debug = !debug;
-            ax = ay = az = tx = ty = tz = player.x = player.y = player.z = 0.0f;
-            camera.Reset();
-        }
-
-        if (input.IsActionDown(Action::ZoomIn)) {
-            scaleValue += dt;
-        }
-        if (input.IsActionDown(Action::ZoomOut)) {
-            scaleValue -= dt;
-        }
-
-        
-
+        scene.Update(dt);
         input.EndFrame();
         
-        ax = fmodf(ax, TWO_PI);
-        ay = fmodf(ay, TWO_PI);
-
-        glm::vec3 position(tx, ty, tz);
-        glm::vec3 rotation(ax, ay, az);
-        glm::vec3 scale(scaleValue);
-
-        glm::mat4 model(1.0f);
 
 
-        model = glm::translate(model, position);
-        model = glm::rotate(model, rotation.y, glm::vec3(0,1,0));
-        model = glm::rotate(model, rotation.x, glm::vec3(1,0,0));
-        model = glm::rotate(model, rotation.z, glm::vec3(0,0,1));
-        model = glm::scale(model, scale);
 
-
-        glm::mat4 projection = glm::perspective(
-            glm::radians(60.0f),
-            (float)width / (float)height,
-            0.1f,
-            100.0f
-        );
-        
-
+        glm::mat4 model = gostosa.transform.toMatrix();
         
         glClearColor(CLEAR_COLOR.r, CLEAR_COLOR.g, CLEAR_COLOR.b, CLEAR_COLOR.a);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+        
+        glDisable(GL_BLEND);
+        glDepthMask(GL_TRUE);
         glEnable(GL_DEPTH_TEST);
+        glDepthFunc(GL_LESS);
+        shaderProgram->Activate();
+        glPolygonMode(GL_FRONT_AND_BACK, scene.debug ? GL_LINE : GL_FILL);
         
         
-        // Plane
         
-        planeShader.Activate();
-        planeShader.SetVec3(planeCameraID, camera.position);
-        planeShader.SetMat4(planeVP_ID, camera.matrix);
-
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-        glEnable(GL_DEPTH_TEST);
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-
         // OBJ
-        glPolygonMode(GL_FRONT_AND_BACK, debug ? GL_LINE : GL_FILL);
-        shaderProgram.Activate();
-        shaderProgram.SetMat4(modelID, model);
-        shaderProgram.SetMat4(viewProjID, camera.matrix);
+        shaderProgram->EnableTextures();
+        gostosaTexture->Bind();
+        shaderProgram->SetMat4(viewProjID, camera.matrix);
+        shaderProgram->SetMat4(modelID, model);
+        gostosa.model->Draw(*shaderProgram, camera);
 
-        //cyl.Draw(shaderProgram, camera);
-        myCube.Draw(shaderProgram, camera);
+        shaderProgram->SetMat4(modelID, identity);
+
+        // TexPlane
+        plane.Draw(*shaderProgram, camera);
+
         
         //Axis
+        shaderProgram->DisableTextures();
         axisVAO.Bind();
         glUniformMatrix4fv(viewProjID, 1, GL_FALSE, glm::value_ptr(camera.matrix));
         glUniformMatrix4fv(modelID, 1, GL_FALSE, glm::value_ptr(identity));
         glDrawArrays(GL_LINES, 0, 6);
 
         // Axis Arrows
-        shaderProgram.SetMat4(viewProjID, camera.matrix);
-        shaderProgram.SetMat4(modelID, identity);
-        arrowsModel.Draw(shaderProgram, camera);
-        
-        
 
+        shaderProgram->SetMat4(viewProjID, camera.matrix);
+        shaderProgram->SetMat4(modelID, identity);
+        arrowsModel.Draw(*shaderProgram, camera);
+        
+        // Plane
+        planeShader.Activate();
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        
+        planeShader.SetVec3(planeCameraID, camera.position);
+        planeShader.SetMat4(planeVP_ID, camera.matrix);
+        glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
 
@@ -410,7 +379,11 @@ INT WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
     // Liberação de recursos
 
     axisVBO.Delete();
-    shaderProgram.Delete();
+    shaderProgram->Delete();
+    planeShader.Delete();
+    gostosaTexture->Delete();
+    myTexture->Delete();
+
     
     return EXIT_SUCCESS;
 }

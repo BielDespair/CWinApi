@@ -1,4 +1,4 @@
-#include <graphics/Camera.hh>
+#include "Camera.hh"
 
 
 
@@ -12,6 +12,8 @@ Camera::Camera(Input& input) : input(input) {
 void Camera::Resize(int width, int height) {
     this->width = width;
     this->height = height;
+    if (height <= 0)
+        height = 1;
     this->aspectRatio = (float)width / (float)height;
 
 

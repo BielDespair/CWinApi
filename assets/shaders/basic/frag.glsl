@@ -1,7 +1,12 @@
 #version 330 core
 
 in vec3 color;
+in vec2 texCoord;
 out vec4 FragColor;
+
+
+uniform bool useTexture;
+uniform sampler2D tex0;
 
 
 void main() {
@@ -12,5 +17,8 @@ void main() {
     //int indiceCor = gl_PrimitiveID % 6;
     
     
-    FragColor = vec4(color, 1.0);
+    if (useTexture)
+        FragColor = texture(tex0, texCoord);
+    else
+        FragColor = vec4(color, 1.0);
 }
